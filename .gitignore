@@ -1,0 +1,15 @@
+# Environment variables
+.env
+backend/.env
+frontend/.env
+
+# Dependencies
+node_modules/
+
+# Build files
+dist/
+
+# Uploaded evidence
+backend/uploads/*
+!backend/uploads/.gitkeep
+.DS_Store

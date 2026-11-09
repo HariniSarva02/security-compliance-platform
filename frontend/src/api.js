@@ -1,0 +1,31 @@
+const API_URL =
+  import.meta.env.VITE_API_URL || "http://localhost:5051/api";
+  
+export const apiRequest = async (endpoint, options = {}) => {
+  const token = localStorage.getItem("token");
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers: {
+      ...(options.body instanceof FormData
+        ? {}
+        : { "Content-Type": "application/json" }),
+      Authorization: token ? `Bearer ${token}` : "",
+      ...options.headers,
+    },
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      data.error
+        ? `${data.message}: ${data.error}`
+        : data.message || "Something went wrong"
+    );
+  }
+
+  return data;
+};
+
+export default API_URL;
