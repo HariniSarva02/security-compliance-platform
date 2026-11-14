@@ -18,7 +18,7 @@ The system provides role-based access, dashboard analytics, compliance reports, 
 - **Evidence Management:** Upload and manage audit evidence.
 - **Findings Management:** Track audit findings.
 - **Corrective Actions:** Manage actions required to resolve compliance issues.
-- **Reports & Analytics:** Generate detailed compliance reports and export them as CSV or PDF.
+- **Reports & Analytics:** Generate detailed compliance reports and export them as CSV and print reports.
 
 ## Technology Stack
 
@@ -181,4 +181,4 @@ The backend provides REST API routes for:
 - Audits – `/api/audits`
 - Evidence – `/api/evidence`
 - Findings – `/api/findings`
-- Correct
+- Corrective Actions – `/api/corrective-actions`
