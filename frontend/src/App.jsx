@@ -3163,6 +3163,118 @@ useEffect(() => {
     </div>
   </div>
 
+
+) : activePage === "Compliance Monitoring" ? (
+
+  <div className="dashboard">
+    <div className="welcome-section">
+      <div>
+        <h1>Compliance Monitoring</h1>
+        <p>
+          Monitor organizational compliance, security controls,
+          audit progress and outstanding findings.
+        </p>
+      </div>
+    </div>
+
+    {loading ? (
+      <p>Loading compliance information...</p>
+    ) : error ? (
+      <p style={{ color: "red" }}>{error}</p>
+    ) : (
+      <>
+        <div className="stats-grid">
+          <div className="stat-card">
+            <h3>Overall Compliance</h3>
+            <h2>{stats?.overallCompliance ?? 0}%</h2>
+            <p>Based on active controls</p>
+          </div>
+
+          <div className="stat-card">
+            <h3>Active Controls</h3>
+            <h2>
+              {stats?.activeControls ?? 0} / {stats?.controls ?? 0}
+            </h2>
+            <p>Currently active security controls</p>
+          </div>
+
+          <div className="stat-card">
+            <h3>Open Findings</h3>
+            <h2>{stats?.openFindings ?? 0}</h2>
+            <p>Findings requiring attention</p>
+          </div>
+
+          <div className="stat-card">
+            <h3>Total Policies</h3>
+            <h2>{stats?.policies ?? 0}</h2>
+            <p>Registered security policies</p>
+          </div>
+        </div>
+
+        <div className="panel" style={{ padding: "24px", marginTop: "25px" }}>
+          <h2>Control Compliance</h2>
+          <p>Active controls compared with all registered controls.</p>
+
+          <div
+            style={{
+              height: "14px",
+              background: "#edf0f5",
+              borderRadius: "10px",
+              overflow: "hidden",
+              marginTop: "18px",
+            }}
+          >
+            <div
+              style={{
+                width: `${Math.min(stats?.overallCompliance ?? 0, 100)}%`,
+                height: "100%",
+                background: "#16a34a",
+                borderRadius: "10px",
+              }}
+            />
+          </div>
+
+          <p style={{ marginTop: "12px" }}>
+            {stats?.overallCompliance ?? 0}% of controls are active
+          </p>
+        </div>
+
+        <div className="panel" style={{ padding: "24px", marginTop: "25px" }}>
+          <h2>Audit Monitoring</h2>
+
+          <div className="stats-grid">
+            <div className="stat-card">
+              <h3>Scheduled</h3>
+              <h2>{stats?.scheduledAudits ?? 0}</h2>
+            </div>
+
+            <div className="stat-card">
+              <h3>In Progress</h3>
+              <h2>{stats?.inProgressAudits ?? 0}</h2>
+            </div>
+
+            <div className="stat-card">
+              <h3>Completed</h3>
+              <h2>{stats?.completedAudits ?? 0}</h2>
+            </div>
+
+            <div className="stat-card">
+              <h3>Total Evidence</h3>
+              <h2>{stats?.evidence ?? 0}</h2>
+            </div>
+          </div>
+        </div>
+
+        <div className="panel" style={{ padding: "24px", marginTop: "25px" }}>
+          <h2>Corrective Action Summary</h2>
+          <h3>{stats?.correctiveActions ?? 0}</h3>
+          <p>Total corrective actions recorded in the platform.</p>
+        </div>
+      </>
+    )}
+  </div>
+
+
 ) : activePage === "Reports" ? (
 
   <div className="dashboard reports-page">
@@ -3385,6 +3497,116 @@ useEffect(() => {
       </div>
     )}
   </div>
+
+) : activePage === "Settings" ? (
+  <div className="dashboard">
+    <div className="welcome-section">
+      <div>
+        <h1>Settings</h1>
+        <p>Manage your account information and platform details.</p>
+      </div>
+    </div>
+
+    <div className="panel" style={{ padding: "24px", marginTop: "20px" }}>
+      <h2>Account Information</h2>
+      <p>Details of your currently logged-in account.</p>
+
+      <div className="stats-grid" style={{ marginTop: "20px" }}>
+        <div className="stat-card">
+          <h3>Full Name</h3>
+          <h2>{user?.name || "Not available"}</h2>
+        </div>
+
+        <div className="stat-card">
+          <h3>Email Address</h3>
+          <h2 style={{ fontSize: "16px", overflowWrap: "anywhere" }}>
+            {user?.email || "Not available"}
+          </h2>
+        </div>
+
+        <div className="stat-card">
+          <h3>Role</h3>
+          <h2>{user?.role || "Not available"}</h2>
+        </div>
+
+        <div className="stat-card">
+          <h3>Department</h3>
+          <h2>{user?.department || "Not assigned"}</h2>
+        </div>
+      </div>
+    </div>
+
+    <div className="panel" style={{ padding: "24px", marginTop: "25px" }}>
+      <h2>Application Information</h2>
+      <p><strong>Application:</strong> Security Policy Compliance and Audit Management Platform</p>
+      <p><strong>Version:</strong> 1.0.0</p>
+      <p><strong>Database:</strong> MongoDB</p>
+      <p><strong>Authentication:</strong> JWT-based authentication</p>
+    </div>
+
+    <div className="panel" style={{ padding: "24px", marginTop: "25px" }}>
+      <h2>Account Actions</h2>
+      <p>Sign out of your current account securely.</p>
+      <button type="button" onClick={handleLogout}>
+        Logout
+      </button>
+    </div>
+  </div>
+
+) : activePage === "Settings" ? (
+  <div className="dashboard">
+    <div className="welcome-section">
+      <div>
+        <h1>Settings</h1>
+        <p>Manage your account information and platform details.</p>
+      </div>
+    </div>
+
+    <div className="panel" style={{ padding: "24px", marginTop: "20px" }}>
+      <h2>Account Information</h2>
+      <p>Details of your currently logged-in account.</p>
+
+      <div className="stats-grid" style={{ marginTop: "20px" }}>
+        <div className="stat-card">
+          <h3>Full Name</h3>
+          <h2>{user?.name || "Not available"}</h2>
+        </div>
+
+        <div className="stat-card">
+          <h3>Email Address</h3>
+          <h2 style={{ fontSize: "16px", overflowWrap: "anywhere" }}>
+            {user?.email || "Not available"}
+          </h2>
+        </div>
+
+        <div className="stat-card">
+          <h3>Role</h3>
+          <h2>{user?.role || "Not available"}</h2>
+        </div>
+
+        <div className="stat-card">
+          <h3>Department</h3>
+          <h2>{user?.department || "Not assigned"}</h2>
+        </div>
+      </div>
+    </div>
+
+    <div className="panel" style={{ padding: "24px", marginTop: "25px" }}>
+      <h2>Application Information</h2>
+      <p><strong>Application:</strong> Security Policy Compliance and Audit Management Platform</p>
+      <p><strong>Version:</strong> 1.0.0</p>
+      <p><strong>Database:</strong> MongoDB</p>
+      <p><strong>Authentication:</strong> JWT-based authentication</p>
+    </div>
+
+    <div className="panel" style={{ padding: "24px", marginTop: "25px" }}>
+      <h2>Account Actions</h2>
+      <p>Sign out of your current account securely.</p>
+      <button type="button" onClick={handleLogout}>
+        Logout
+      </button>
+    </div>
+  </div>
 ) : (
   <div className="placeholder-page">
     <div className="placeholder-icon">
@@ -3396,6 +3618,7 @@ useEffect(() => {
     </p>
   </div>
 )}
+
 
 
 
