@@ -30,6 +30,7 @@ import {
   createCorrectiveAction,
   getUsers,
   updateFinding,
+  updateUser,
   deleteFinding,
 } from "./dashboardService";
 import {
@@ -156,8 +157,15 @@ useEffect(() => {
   const [editingFindingId, setEditingFindingId] = useState(null);
   const [correctiveActions, setCorrectiveActions] = useState([]);
   const [users, setUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [usersError, setUsersError] = useState("");
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editUserRole, setEditUserRole] = useState("");
+  const [editUserDepartment, setEditUserDepartment] = useState("");
+  const [userUpdateLoading, setUserUpdateLoading] = useState(false);
+  const [userUpdateSuccess, setUserUpdateSuccess] = useState("");
   const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user") || "null")
+    JSON.parse(localStorage.getItem("user") || "null")	
   );
 
   const [actionForm, setActionForm] = useState({
@@ -1083,6 +1091,40 @@ const handleDeleteAsset = async (id) => {
   }
 };
 
+const handleUserUpdate = async (id) => {
+  try {
+    setUserUpdateLoading(true);
+    setUsersError("");
+    setUserUpdateSuccess("");
+
+    await updateUser(id, {
+      role: editUserRole,
+      department: editUserDepartment,
+    });
+
+
+    const data = await getUsers();
+    setUsers(data);
+    setUserUpdateSuccess("User updated successfully!");
+    setEditingUserId(null);
+    setEditUserRole("");
+    setEditUserDepartment("");
+  } catch (err) {
+    setUsersError(err.message);
+  } finally {
+    setUserUpdateLoading(false);
+  }
+};
+
+useEffect(() => {
+  if (!userUpdateSuccess) return;
+
+  const timer = setTimeout(() => {
+    setUserUpdateSuccess("");
+  }, 3000);
+
+  return () => clearTimeout(timer);
+}, [userUpdateSuccess]);
 
 
   useEffect(() => {
@@ -1148,6 +1190,28 @@ const handleDeleteAsset = async (id) => {
     }
   }, [activePage]);
 
+
+  useEffect(() => {
+    if (activePage === "User Management" && user?.role === "Admin") {
+      const loadUsers = async () => {
+        try {
+          setUsersLoading(true);
+          setUsersError("");
+  
+          const data = await getUsers();
+          setUsers(data);
+        } catch (err) {
+          setUsersError(err.message);
+        } finally {
+          setUsersLoading(false);
+        }
+      };
+  
+      loadUsers();
+    }
+  }, [activePage]);
+
+
   useEffect(() => {
     if (activePage === "Reports") {
       loadDepartments();
@@ -1167,7 +1231,7 @@ const handleDeleteAsset = async (id) => {
     }
   }, [activePage]);
 
-  
+
 
   const findings = liveFindings.map((finding, index) => ({
     
@@ -1391,8 +1455,8 @@ const handleDeleteAsset = async (id) => {
     <div className="profile-avatar">SH</div>
 
     <div className="profile-info">
-      <strong>Harini</strong>
-      <span>Administrator</span>
+    <strong>{user?.name || "User"}</strong>
+    <span>{user?.role || "User"}</span>
     </div>
 
     <ChevronDown size={16} />
@@ -1417,10 +1481,15 @@ const handleDeleteAsset = async (id) => {
           <div className="dashboard">
             <div className="welcome-section">
               <div>
-                <h1>Security Overview</h1>
+                <h1>
+                  {user?.role === "Compliance Officer"
+                    ? "Compliance Officer Dashboard"
+                    : "Security Overview"}
+                </h1>
                 <p>
-                  Monitor your organization's security policies,
-                  compliance and audit activities.
+                {user?.role === "Compliance Officer"
+                  ? "Monitor security policies, compliance status, audit findings and corrective actions."
+                  : "Monitor your organization's security policies, compliance and audit activities."}
                 </p>
               </div>
 
@@ -1437,7 +1506,12 @@ const handleDeleteAsset = async (id) => {
             <div className="stats-grid">
             
 
-              {cards.map((card) => {
+            {(user?.role === "Compliance Officer"
+              ? cards.filter((card) =>
+                  ["Overall Compliance", "Total Policies", "Total Audits", "Open Findings"].includes(card.title)
+                )
+              : cards
+            ).map((card) => {
                 const Icon = card.icon;
 
                 return (
@@ -3192,8 +3266,126 @@ const handleDeleteAsset = async (id) => {
     </div>
   </div>
 
-) : (
+) : activePage === "User Management" ? (
+  <div className="dashboard user-management-page">
+    <div className="welcome-section">
+      <div>
+        <h1>User Management</h1>
+        <p>View and manage platform users and their roles.</p>
+      </div>
+    </div>
 
+    {user?.role !== "Admin" ? (
+      <div className="panel">
+        <p>Only Admin users can access User Management.</p>
+      </div>
+    ) : (
+      <div className="panel">
+        <h2>Registered Users</h2>
+        {userUpdateSuccess && (
+  <div className="success-message">
+    {userUpdateSuccess}
+  </div>
+)}
+
+        {usersLoading ? (
+          <p>Loading users...</p>
+        ) : usersError ? (
+          <p>{usersError}</p>
+        ) : users.length === 0 ? (
+            <p>No registered users found.</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Department</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((item) => (
+                    <tr key={item._id}>
+                      <td>{item.name}</td>
+                      <td>{item.email}</td>
+                      <td>
+                        {editingUserId === item._id ? (
+                          <select
+                            value={editUserRole}
+                            onChange={(e) => setEditUserRole(e.target.value)}
+                          >
+                            <option value="Admin">Admin</option>
+                            <option value="Compliance Officer">Compliance Officer</option>
+                            <option value="Auditor">Auditor</option>
+                            <option value="Department Owner">Department Owner</option>
+                          </select>
+                        ) : (
+                          item.role
+                        )}
+                      </td>
+
+                      <td>
+                        {editingUserId === item._id ? (
+                          <input
+                            type="text"
+                            value={editUserDepartment}
+                            onChange={(e) => setEditUserDepartment(e.target.value)}
+                            placeholder="Enter department"
+                          />
+                        ) : (
+                          item.department || "Not assigned"
+                        )}
+                      </td>
+                      <td>
+                        {editingUserId === item._id ? (
+                          <>
+                            <button
+                              type="button"
+                              disabled={userUpdateLoading}
+                              onClick={() => handleUserUpdate(item._id)}
+                            >
+                              {userUpdateLoading ? "Saving..." : "Save"}
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={userUpdateLoading}
+                              onClick={() => {
+                                setEditingUserId(null);
+                                setEditUserRole("");
+                                setEditUserDepartment("");
+                              }}
+                            >
+                              Cancel
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingUserId(item._id);
+                              setEditUserRole(item.role);
+                              setEditUserDepartment(item.department || "");
+                            }}
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </td>
+                      
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+      </div>
+    )}
+  </div>
+) : (
   <div className="placeholder-page">
     <div className="placeholder-icon">
       <Settings size={35} />
@@ -3203,7 +3395,6 @@ const handleDeleteAsset = async (id) => {
       This module will be implemented in the next development phase.
     </p>
   </div>
-
 )}
 
 

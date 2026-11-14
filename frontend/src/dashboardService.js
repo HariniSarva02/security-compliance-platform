@@ -23,6 +23,12 @@ export const getUsers = async () => {
   return await apiRequest("/users");
 };
 
+export const updateUser = async (id, userData) => {
+  return await apiRequest(`/users/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(userData),
+  });
+};
 
 export const createCorrectiveAction = async (actionData) => {
   return await apiRequest("/corrective-actions", {

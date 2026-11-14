@@ -2069,3 +2069,133 @@ td:first-child {
     background: white !important;
   }
 }
+
+.success-message {
+  margin: 16px 0;
+  padding: 13px 16px;
+  background: #f0fdf4;
+  border: 1px solid #dcfce7;
+  border-left: 4px solid #22c55e;
+  border-radius: 8px;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* USER MANAGEMENT PAGE */
+
+.user-management-page .panel > h2 {
+  color: #24324a;
+  font-size: 16px;
+  font-weight: 650;
+  margin-bottom: 20px;
+}
+
+.user-management-page table {
+  min-width: 760px;
+}
+
+.user-management-page th {
+  font-size: 11px;
+  padding: 15px;
+}
+
+.user-management-page td {
+  font-size: 12px;
+  padding: 15px;
+  vertical-align: middle;
+}
+
+.user-management-page td select,
+.user-management-page td input {
+  width: 100%;
+  min-width: 140px;
+  padding: 9px 11px;
+  border: 1px solid #dce3ee;
+  border-radius: 7px;
+  background: #fdfefe;
+  color: #334155;
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.user-management-page td select:focus,
+.user-management-page td input:focus {
+  border-color: #4169e1;
+  box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.10);
+}
+
+.user-management-page td:last-child {
+  white-space: nowrap;
+}
+
+.user-management-page td button {
+  padding: 8px 14px;
+  margin-right: 7px;
+  border: none;
+  border-radius: 7px;
+  background: #4169e1;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.user-management-page td button:hover {
+  background: #3154c5;
+  transform: translateY(-1px);
+}
+
+.user-management-page td button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.user-management-page td button + button {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #dce3ee;
+}
+
+.user-management-page td button + button:hover {
+  background: #e2e8f0;
+}
+
+
+/* REPORT PRINT LAYOUT */
+@media print {
+  .sidebar,
+  .topbar,
+  .navbar,
+  .view-all,
+  button {
+    display: none !important;
+  }
+
+  .app-layout {
+    display: block !important;
+  }
+
+  .main-content {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+
+  .reports-page {
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .reports-page .panel,
+  .reports-page .stat-card {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  body {
+    background: white !important;
+  }
+}
