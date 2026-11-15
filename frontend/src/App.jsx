@@ -30,6 +30,8 @@ import {
   createCorrectiveAction,
   updateCorrectiveAction,
   getUsers,
+  createUser,
+  resetUserPassword,
   getAssignableUsers,
   updateFinding,
   updateUser,
@@ -164,6 +166,17 @@ useEffect(() => {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
+  const [showCreateUserForm, setShowCreateUserForm] = useState(false);
+  const [newUser, setNewUser] = useState({
+    name: "",
+    email: "",
+    password: "",
+    role: "Department Owner",
+    department: "",
+  });
+  const [createUserLoading, setCreateUserLoading] = useState(false);
+  const [resettingUserId, setResettingUserId] = useState(null);
+  const [resetPassword, setResetPassword] = useState("");
   const [activityLogs, setActivityLogs] = useState([]);
   const [activityLogsLoading, setActivityLogsLoading] = useState(false);
   const [activityLogsError, setActivityLogsError] = useState("");
@@ -1174,6 +1187,64 @@ const handleDeleteAsset = async (id) => {
   }
 };
 
+const handleCreateUser = async (e) => {
+  e.preventDefault();
+
+  try {
+    setCreateUserLoading(true);
+    setUsersError("");
+    setUserUpdateSuccess("");
+
+    await createUser(newUser);
+
+    const data = await getUsers();
+    setUsers(data);
+
+    setNewUser({
+      name: "",
+      email: "",
+      password: "",
+      role: "Department Owner",
+      department: "",
+    });
+
+    setShowCreateUserForm(false);
+    setUserUpdateSuccess("User created successfully!");
+  } catch (err) {
+    setUsersError(err.message);
+  } finally {
+    setCreateUserLoading(false);
+  }
+};
+
+const handleResetUserPassword = async (id) => {
+  const newPassword = window.prompt(
+    "Enter a new password (minimum 8 characters):"
+  );
+
+  if (newPassword === null) return;
+
+  if (newPassword.length < 8) {
+    setUsersError("Password must contain at least 8 characters.");
+    return;
+  }
+
+  try {
+    setResettingUserId(id);
+    setUsersError("");
+    setUserUpdateSuccess("");
+
+    await resetUserPassword(id, newPassword);
+
+    setResetPassword("");
+    setUserUpdateSuccess("User password reset successfully!");
+  } catch (err) {
+    setUsersError(err.message);
+  } finally {
+    setResettingUserId(null);
+  }
+};
+
 const handleUserUpdate = async (id) => {
   try {
     setUserUpdateLoading(true);
@@ -1448,7 +1519,147 @@ useEffect(() => {
   };
 
 
-  return (
+
+  const getReportValue = (value, field = "name") => {
+    if (value === null || value === undefined) return "—";
+    if (typeof value === "object") return value[field] || "—";
+    return value;
+  };
+
+  const getControlGapReport = () => {
+    return controls
+      .map((control) => {
+        const relatedFindings = liveFindings.filter(
+          (finding) =>
+            getReportValue(finding.control, "_id") === control._id ||
+            getReportValue(finding.control, "controlId") === control.controlId
+        );
+
+        const openFindings = relatedFindings.filter(
+          (finding) => ["Open", "In Progress"].includes(finding.status)
+        );
+
+        const reasons = [];
+
+        if (control.status === "Inactive") {
+          reasons.push("Control is Inactive");
+        }
+
+        if (openFindings.length > 0) {
+          reasons.push(`${openFindings.length} unresolved finding(s)`);
+        }
+
+        return {
+          controlId: control.controlId,
+          title: control.title,
+          category: control.category,
+          policy: getReportValue(control.policy, "title"),
+          requirement: control.requirement || "Not specified",
+          status: control.status,
+          openFindings: openFindings.length,
+          gapReason: reasons.join("; "),
+        };
+      })
+      .filter((control) => control.gapReason);
+  };
+
+  const mandatoryReports = {
+    "Compliance Status Report": audits.map((audit) => ({
+      audit: audit.title,
+      department: getReportValue(audit.department, "name"),
+      auditor: getReportValue(audit.auditor),
+      auditType: audit.auditType,
+      startDate: audit.startDate
+        ? new Date(audit.startDate).toLocaleDateString()
+        : "—",
+      endDate: audit.endDate
+        ? new Date(audit.endDate).toLocaleDateString()
+        : "—",
+      auditStatus: audit.status,
+      complianceResult: audit.overallResult,
+    })),
+
+    "Control Gap Report": getControlGapReport(),
+
+    "Audit Findings Report": liveFindings.map((finding) => ({
+      title: finding.title,
+      audit: getReportValue(finding.audit, "title"),
+      control: getReportValue(finding.control, "title"),
+      asset: getReportValue(finding.asset),
+      severity: finding.severity,
+      status: finding.status,
+      recommendation: finding.recommendation || "—",
+    })),
+
+    "Corrective Action Report": correctiveActions.map((action) => ({
+      title: action.title,
+      finding: getReportValue(action.finding, "title"),
+      assignedTo: getReportValue(action.assignedTo),
+      priority: action.priority,
+      dueDate: action.dueDate
+        ? new Date(action.dueDate).toLocaleDateString()
+        : "—",
+      status:
+        action.status !== "Completed" &&
+        action.dueDate &&
+        new Date(action.dueDate) < new Date()
+          ? "Overdue"
+          : action.status,
+      closureNotes: action.closureNotes || "—",
+    })),
+  };
+
+  const handleExportMandatoryReport = (reportName) => {
+    const records = mandatoryReports[reportName];
+
+    if (!records) return;
+
+    const headers = records.length
+      ? Object.keys(records[0])
+      : ["No records available"];
+
+    const escapeValue = (value) => {
+      let text = value === null || value === undefined
+        ? ""
+        : String(value);
+
+      if (/^[=+\-@\t\r]/.test(text)) {
+        text = "'" + text;
+      }
+
+      return `"${text.replace(/"/g, '""')}"`;
+    };
+
+    const rows = [
+      ["SECUREAUDIT - " + reportName.toUpperCase()],
+      ["Generated On", new Date().toLocaleString()],
+      [],
+      headers,
+      ...(records.length
+        ? records.map((record) => headers.map((header) => record[header]))
+        : [["No records available"]]),
+    ];
+
+    const csvContent =
+      "\uFEFF" +
+      rows.map((row) => row.map(escapeValue).join(",")).join("\n");
+
+    const blob = new Blob([csvContent], {
+      type: "text/csv;charset=utf-8;",
+    });
+
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+
+    link.href = url;
+    link.download =
+      reportName.replace(/[^a-z0-9]+/gi, "-") + ".csv";
+    link.click();
+
+    URL.revokeObjectURL(url);
+  };
+
+return (
     <div className="app-layout">
 
       <aside className={`sidebar ${sidebarOpen ? "" : "sidebar-closed"}`}>
@@ -3894,6 +4105,56 @@ useEffect(() => {
         </tbody>
       </table>
     </div>
+
+    {Object.entries(mandatoryReports).map(([reportName, records]) => (
+      <div
+        className="panel"
+        key={reportName}
+        style={{ padding: "20px", marginTop: "25px" }}
+      >
+        <div className="section-header">
+          <div>
+            <h2>{reportName}</h2>
+            <p>{records.length} record(s) available in this report.</p>
+          </div>
+
+          <button
+            className="view-all"
+            onClick={() => handleExportMandatoryReport(reportName)}
+          >
+            Export CSV
+          </button>
+        </div>
+
+        {records.length === 0 ? (
+          <p>No records available for this report.</p>
+        ) : (
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  {Object.keys(records[0]).map((column) => (
+                    <th key={column}>
+                      {column.replace(/([A-Z])/g, " $1").replace(/^./, (letter) => letter.toUpperCase())}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+
+              <tbody>
+                {records.map((record, index) => (
+                  <tr key={index}>
+                    {Object.keys(records[0]).map((column) => (
+                      <td key={column}>{record[column] ?? "—"}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    ))}
   </div>
 
 ) : activePage === "User Management" ? (
@@ -3910,8 +4171,92 @@ useEffect(() => {
         <p>Only Admin users can access User Management.</p>
       </div>
     ) : (
-      <div className="panel">
-        <h2>Registered Users</h2>
+      <>
+        <div className="panel">
+          <div className="section-header">
+            <h2>Create New User</h2>
+            <button
+              type="button"
+              onClick={() => setShowCreateUserForm(!showCreateUserForm)}
+            >
+              {showCreateUserForm ? "Cancel" : "Add User"}
+            </button>
+          </div>
+
+          {showCreateUserForm && (
+            <form onSubmit={handleCreateUser} autoComplete="off">
+              <div className="form-grid">
+                <div className="form-group">
+                  <label>Name</label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={newUser.name}
+                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    placeholder="Enter full name"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Email</label>
+                  <input
+                    type="email"
+                    autoComplete="off"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    placeholder="Enter email address"
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Password</label>
+                  <input
+                    type="password"
+                    autoComplete="new-password"
+                    value={newUser.password}
+                    onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                    placeholder="Minimum 8 characters"
+                    minLength={8}
+                    required
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>Role</label>
+                  <select
+                    value={newUser.role}
+                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
+                  >
+                    <option value="Admin">Admin</option>
+                    <option value="Compliance Officer">Compliance Officer</option>
+                    <option value="Auditor">Auditor</option>
+                    <option value="Department Owner">Department Owner</option>
+                  </select>
+                </div>
+
+                <div className="form-group">
+                  <label>Department</label>
+                  <input
+                    type="text"
+                    autoComplete="off"
+                    value={newUser.department}
+                    onChange={(e) => setNewUser({ ...newUser, department: e.target.value })}
+                    placeholder="Enter department"
+                  />
+                </div>
+              </div>
+
+              <button type="submit" disabled={createUserLoading}>
+                {createUserLoading ? "Creating..." : "Create User"}
+              </button>
+            </form>
+          )}
+        </div>
+
+        <div className="panel">
+          <h2>Registered Users</h2>
         {userUpdateSuccess && (
   <div className="success-message">
     {userUpdateSuccess}
@@ -3993,16 +4338,26 @@ useEffect(() => {
                             </button>
                           </>
                         ) : (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setEditingUserId(item._id);
-                              setEditUserRole(item.role);
-                              setEditUserDepartment(item.department || "");
-                            }}
-                          >
-                            Edit
-                          </button>
+                          <>
+  <button
+    type="button"
+    onClick={() => {
+      setEditingUserId(item._id);
+      setEditUserRole(item.role);
+      setEditUserDepartment(item.department || "");
+    }}
+  >
+    Edit
+  </button>
+
+  <button
+    type="button"
+    disabled={resettingUserId === item._id}
+    onClick={() => handleResetUserPassword(item._id)}
+  >
+    {resettingUserId === item._id ? "Resetting..." : "Reset Password"}
+  </button>
+</>
                         )}
                       </td>
 
@@ -4011,10 +4366,11 @@ useEffect(() => {
                 </tbody>
               </table>
             </div>
-          )}
-      </div>
-    )}
-  </div>
+                    )}
+                    </div>
+                  </>
+                  )}
+                </div>
 
 ) : activePage === "Settings" ? (
   <div className="dashboard settings-page">

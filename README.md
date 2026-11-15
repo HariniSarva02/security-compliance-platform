@@ -183,3 +183,91 @@ The backend provides REST API routes for:
 - Evidence – `/api/evidence`
 - Findings – `/api/findings`
 - Corrective Actions – `/api/corrective-actions`
+
+## Kubernetes Deployment
+
+The application can also be deployed to a local Kubernetes cluster using Docker Desktop Kubernetes.
+
+### Prerequisites
+
+- Docker Desktop with Kubernetes enabled
+- kubectl CLI
+- MongoDB Atlas connection configured in `backend/.env`
+
+### 1. Start Kubernetes
+
+Open Docker Desktop, enable Kubernetes in Settings, and wait until the cluster is running.
+
+Verify the cluster:
+
+```bash
+kubectl config current-context
+kubectl get nodes
+
+
+### 2. Build Docker Images
+
+From the project root:
+
+```bash
+docker compose build
+```
+
+### 3. Import Images into the Kubernetes Node
+
+For the Docker Desktop Kubernetes cluster used in this project:
+
+```bash
+docker save \
+  security-compliance-platform-frontend:latest \
+  security-compliance-platform-backend:latest \
+  | docker exec -i desktop-control-plane ctr -n k8s.io images import -
+```
+
+### 4. Create the Namespace and Backend Secret
+
+```bash
+kubectl create namespace secureaudit
+```
+
+Create a Kubernetes Secret using the local backend environment file:
+
+```bash
+kubectl create secret generic secureaudit-backend-secret \
+  --from-env-file=backend/.env \
+  --namespace=secureaudit
+```
+
+Do not commit `backend/.env` or any file containing secret values to GitHub.
+
+### 5. Deploy Storage, Backend, and Frontend
+
+Apply the Kubernetes configuration files in this order:
+
+```bash
+kubectl apply -f k8s/storage.yaml
+kubectl apply -f k8s/backend.yaml
+kubectl apply -f k8s/frontend.yaml
+```
+
+### 6. Access the Application
+
+```bash
+kubectl port-forward service/frontend 8080:80 -n secureaudit
+```
+
+Keep the terminal running and open http://localhost:8080 in your browser.
+
+### 7. Verify the Deployment
+
+```bash
+kubectl get all -n secureaudit
+kubectl get pvc -n secureaudit
+kubectl logs deployment/backend -n secureaudit
+```
+
+### Kubernetes Configuration Files
+
+- `k8s/storage.yaml` – Persistent storage for uploaded evidence.
+- `k8s/backend.yaml` – Backend Deployment and ClusterIP Service.
+- `k8s/frontend.yaml` – Frontend Deployment and NodePort Service.

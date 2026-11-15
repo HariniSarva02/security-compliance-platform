@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: secureaudit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: security-compliance-platform-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5051
+          envFrom:
+            - secretRef:
+                name: secureaudit-backend-secret
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+      volumes:
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: secureaudit-uploads-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: secureaudit
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 5051
+      targetPort: 5051
+      protocol: TCP

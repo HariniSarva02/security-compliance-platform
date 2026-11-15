@@ -23,6 +23,20 @@ export const getUsers = async () => {
   return await apiRequest("/users");
 };
 
+
+export const createUser = async (userData) => {
+  return await apiRequest("/users", {
+    method: "POST",
+    body: JSON.stringify(userData),
+  });
+};
+export const resetUserPassword = async (userId, password) => {
+  return await apiRequest(`/users/${userId}/reset-password`, {
+    method: "PATCH",
+    body: JSON.stringify({ password }),
+  });
+};
+
 export const getAssignableUsers = async () => {
   return await apiRequest("/users/assignable");
 };
