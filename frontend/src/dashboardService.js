@@ -23,6 +23,10 @@ export const getUsers = async () => {
   return await apiRequest("/users");
 };
 
+export const getAssignableUsers = async () => {
+  return await apiRequest("/users/assignable");
+};
+
 export const updateUser = async (id, userData) => {
   return await apiRequest(`/users/${id}`, {
     method: "PUT",
@@ -37,6 +41,13 @@ export const createCorrectiveAction = async (actionData) => {
   });
 };
 
+
+export const updateCorrectiveAction = async (id, actionData) => {
+  return await apiRequest(`/corrective-actions/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(actionData),
+  });
+};
 
 export const getPolicies = async () => {
   return await apiRequest("/policies");
@@ -202,4 +213,9 @@ export const deleteFinding = async (id) => {
   return await apiRequest(`/findings/${id}`, {
     method: "DELETE",
   });
+};
+
+// Activity Logs API
+export const getActivityLogs = async () => {
+  return await apiRequest("/activity-logs");
 };

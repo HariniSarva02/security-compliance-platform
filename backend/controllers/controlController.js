@@ -1,9 +1,18 @@
 const Control = require("../models/Control");
+const logActivity = require("../utils/logActivity");
 
 // Create a control
 const createControl = async (req, res) => {
   try {
     const control = await Control.create(req.body);
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Created",
+      module: "Control",
+      description: `Created control ${control.name}`,
+      resourceId: control._id.toString(),
+    });
 
     res.status(201).json({
       message: "Control created successfully!",
@@ -69,6 +78,14 @@ const updateControl = async (req, res) => {
       });
     }
 
+    await logActivity({
+      userId: req.user.id,
+      action: "Updated",
+      module: "Control",
+      description: `Updated control ${control.name}`,
+      resourceId: control._id.toString(),
+    });
+
     res.status(200).json({
       message: "Control updated successfully!",
       control,
@@ -91,6 +108,14 @@ const deleteControl = async (req, res) => {
         message: "Control not found.",
       });
     }
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Deleted",
+      module: "Control",
+      description: `Deleted control ${control.name}`,
+      resourceId: control._id.toString(),
+    });
 
     res.status(200).json({
       message: "Control deleted successfully!",

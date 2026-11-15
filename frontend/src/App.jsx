@@ -28,10 +28,13 @@ import {
   uploadEvidence,
   getCorrectiveActions,
   createCorrectiveAction,
+  updateCorrectiveAction,
   getUsers,
+  getAssignableUsers,
   updateFinding,
   updateUser,
   deleteFinding,
+  getActivityLogs,
 } from "./dashboardService";
 import {
   LayoutDashboard,
@@ -54,6 +57,7 @@ import {
   CircleAlert,
   Menu,
   LogOut,
+  History,
 } from "lucide-react";
 
 import {
@@ -97,6 +101,7 @@ const navigation = [
   { name: "Evidence Collection", icon: FolderCheck },
   { name: "Audit Findings", icon: AlertTriangle },
   { name: "Corrective Actions", icon: ClipboardCheck },
+  { name: "Activity Log", icon: History },
   { title: "ANALYTICS" },
   { name: "Compliance Monitoring", icon: TrendingUp },
   { name: "Reports", icon: FileText },
@@ -159,13 +164,16 @@ useEffect(() => {
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
+  const [activityLogs, setActivityLogs] = useState([]);
+  const [activityLogsLoading, setActivityLogsLoading] = useState(false);
+  const [activityLogsError, setActivityLogsError] = useState("");
   const [editingUserId, setEditingUserId] = useState(null);
   const [editUserRole, setEditUserRole] = useState("");
   const [editUserDepartment, setEditUserDepartment] = useState("");
   const [userUpdateLoading, setUserUpdateLoading] = useState(false);
   const [userUpdateSuccess, setUserUpdateSuccess] = useState("");
   const [user, setUser] = useState(
-    JSON.parse(localStorage.getItem("user") || "null")	
+    JSON.parse(localStorage.getItem("user") || "null")
   );
 
   const [actionForm, setActionForm] = useState({
@@ -181,6 +189,15 @@ useEffect(() => {
 
 
   const [correctiveActionError, setCorrectiveActionError] = useState("");
+  const [editingCorrectiveActionId, setEditingCorrectiveActionId] = useState(null);
+  const [editCorrectiveActionStatus, setEditCorrectiveActionStatus] = useState("");
+  const [editCorrectiveActionNotes, setEditCorrectiveActionNotes] = useState("");
+  const [editCorrectiveActionTitle, setEditCorrectiveActionTitle] = useState("");
+  const [editCorrectiveActionDescription, setEditCorrectiveActionDescription] = useState("");
+  const [editCorrectiveActionAssignedTo, setEditCorrectiveActionAssignedTo] = useState("");
+  const [editCorrectiveActionDueDate, setEditCorrectiveActionDueDate] = useState("");
+  const [editCorrectiveActionPriority, setEditCorrectiveActionPriority] = useState("Medium");
+  const [correctiveActionUpdateLoading, setCorrectiveActionUpdateLoading] = useState(false);
   const [showCorrectiveActionForm, setShowCorrectiveActionForm] = useState(false);
   const [correctiveActionLoading, setCorrectiveActionLoading] = useState(false);
   const [findingLoading, setFindingLoading] = useState(false);
@@ -291,7 +308,7 @@ const [controlForm, setControlForm] = useState({
 
   useEffect(() => {
     if (!isAuthenticated) return;
-  
+
     const loadDashboard = async () => {
       try {
         const data = await getDashboardStats();
@@ -299,7 +316,7 @@ const [controlForm, setControlForm] = useState({
       } catch (err) {
         setError(err.message);
       }
-  
+
       try {
         const findingsData = await getFindings();
         setLiveFindings(findingsData);
@@ -309,9 +326,36 @@ const [controlForm, setControlForm] = useState({
         setLoading(false);
       }
     };
-  
+
     loadDashboard();
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (
+      !isAuthenticated ||
+      activePage !== "Activity Log" ||
+      !["Admin", "Compliance Officer", "Auditor"].includes(user?.role)
+    ) {
+      return;
+    }
+
+    const loadActivityLogs = async () => {
+      try {
+        setActivityLogsLoading(true);
+        setActivityLogsError("");
+
+        const data = await getActivityLogs();
+        setActivityLogs(data);
+      } catch (err) {
+        setActivityLogsError(err.message);
+      } finally {
+        setActivityLogsLoading(false);
+      }
+    };
+
+    loadActivityLogs();
+  }, [isAuthenticated, activePage, user]);
+
 
 
 const handleLogin = async (e) => {
@@ -438,7 +482,7 @@ const handleLogout = () => {
 
   const openAddPolicyForm = () => {
     setEditingPolicy(null);
-  
+
     setPolicyForm({
       title: "",
       description: "",
@@ -449,13 +493,13 @@ const handleLogout = () => {
       effectiveDate: "",
       reviewDate: "",
     });
-  
+
     setShowPolicyForm(true);
   };
-  
+
   const openEditPolicyForm = (policy) => {
     setEditingPolicy(policy);
-  
+
     setPolicyForm({
       title: policy.title || "",
       description: policy.description || "",
@@ -470,13 +514,13 @@ const handleLogout = () => {
         ? policy.reviewDate.substring(0, 10)
         : "",
     });
-  
+
     setShowPolicyForm(true);
   };
-  
+
   const handlePolicyInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     setPolicyForm((previous) => ({
       ...previous,
       [name]: value,
@@ -484,7 +528,7 @@ const handleLogout = () => {
   };
   const openAddControlForm = () => {
     setEditingControl(null);
-  
+
     setControlForm({
       controlId: "",
       title: "",
@@ -494,13 +538,13 @@ const handleLogout = () => {
       requirement: "",
       status: "Active",
     });
-  
+
     setShowControlForm(true);
   };
-  
+
   const openEditControlForm = (control) => {
     setEditingControl(control);
-  
+
     setControlForm({
       controlId: control.controlId || "",
       title: control.title || "",
@@ -510,13 +554,13 @@ const handleLogout = () => {
       requirement: control.requirement || "",
       status: control.status || "Active",
     });
-  
+
     setShowControlForm(true);
   };
-  
+
   const handleControlInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     setControlForm((previous) => ({
       ...previous,
       [name]: value,
@@ -525,16 +569,16 @@ const handleLogout = () => {
 
   const handleControlSubmit = async (e) => {
     e.preventDefault();
-  
+
     try {
       setControlError("");
-  
+
       if (editingControl) {
         await updateControl(editingControl._id, controlForm);
       } else {
         await createControl(controlForm);
       }
-  
+
       setShowControlForm(false);
       setEditingControl(null);
       await loadControls();
@@ -542,14 +586,14 @@ const handleLogout = () => {
       setControlError(err.message);
     }
   };
-  
+
   const handleDeleteControl = async (id) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this security control?"
     );
-  
+
     if (!confirmed) return;
-  
+
     try {
       setControlError("");
       await deleteControl(id);
@@ -606,7 +650,7 @@ const handleDeletePolicy = async (id) => {
     try {
       setPolicyLoading(true);
       setPolicyError("");
-  
+
       const data = await getPolicies();
       setPolicies(data);
     } catch (err) {
@@ -620,7 +664,7 @@ const handleDeletePolicy = async (id) => {
     try {
       setControlLoading(true);
       setControlError("");
-  
+
       const data = await getControls();
       setControls(data);
     } catch (err) {
@@ -634,7 +678,7 @@ const handleDeletePolicy = async (id) => {
     try {
       setDepartmentLoading(true);
       setDepartmentError("");
-  
+
       const data = await getDepartments();
       setDepartments(data);
     } catch (err) {
@@ -648,7 +692,7 @@ const handleDeletePolicy = async (id) => {
     try {
       setAssetLoading(true);
       setAssetError("");
-  
+
       const data = await getAssets();
       setAssets(data);
     } catch (err) {
@@ -662,7 +706,7 @@ const handleDeletePolicy = async (id) => {
     try {
       setAuditLoading(true);
       setAuditError("");
-  
+
       const data = await getAudits();
       setAudits(data);
     } catch (error) {
@@ -675,7 +719,7 @@ const handleDeletePolicy = async (id) => {
     try {
       setEvidenceLoading(true);
       setEvidenceError("");
-  
+
       const data = await getEvidence();
       setEvidence(data);
     } catch (error) {
@@ -701,13 +745,13 @@ const handleDeletePolicy = async (id) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this finding?"
     );
-  
+
     if (!confirmed) return;
-  
+
     try {
       setFindingError("");
       await deleteFinding(id);
-  
+
       const data = await getFindings();
       setLiveFindings(data);
     } catch (err) {
@@ -718,11 +762,11 @@ const handleDeletePolicy = async (id) => {
 
   const handleFindingSubmit = async (e) => {
     e.preventDefault();
-  
+
     try {
       setFindingLoading(true);
       setFindingError("");
-  
+
       const findingData = {
         title: findingTitle,
         description: findingDescription,
@@ -733,13 +777,13 @@ const handleDeletePolicy = async (id) => {
         recommendation: findingRecommendation,
         status: findingStatus,
       };
-  
+
       if (editingFindingId) {
         await updateFinding(editingFindingId, findingData);
       } else {
         await createFinding(findingData);
       }
-  
+
       setEditingFindingId(null);
       setFindingTitle("");
       setFindingDescription("");
@@ -750,7 +794,7 @@ const handleDeletePolicy = async (id) => {
       setFindingRecommendation("");
       setFindingStatus("Open");
       setShowFindingForm(false);
-  
+
       const data = await getFindings();
       setLiveFindings(data);
     } catch (err) {
@@ -759,19 +803,19 @@ const handleDeletePolicy = async (id) => {
       setFindingLoading(false);
     }
   };
-  
+
   const handleCorrectiveActionSubmit = async (e) => {
     e.preventDefault();
-  
+
     try {
       setCorrectiveActionLoading(true);
       setCorrectiveActionError("");
-  
+
       await createCorrectiveAction(actionForm);
-  
+
       const data = await getCorrectiveActions();
       setCorrectiveActions(data);
-  
+
       setActionForm({
         title: "",
         description: "",
@@ -782,7 +826,7 @@ const handleDeletePolicy = async (id) => {
         status: "Open",
         closureNotes: "",
       });
-  
+
       setShowCorrectiveActionForm(false);
     } catch (err) {
       setCorrectiveActionError(err.message);
@@ -791,35 +835,74 @@ const handleDeletePolicy = async (id) => {
     }
   };
 
+
+  const handleCorrectiveActionUpdate = async (id) => {
+    try {
+      setCorrectiveActionUpdateLoading(true);
+      setCorrectiveActionError("");
+
+      await updateCorrectiveAction(id, {
+        title: editCorrectiveActionTitle,
+        description: editCorrectiveActionDescription,
+        ...(editCorrectiveActionAssignedTo
+          ? { assignedTo: editCorrectiveActionAssignedTo }
+          : {}),
+        dueDate: editCorrectiveActionDueDate,
+        priority: editCorrectiveActionPriority,
+        status: editCorrectiveActionStatus,
+        closureNotes: editCorrectiveActionNotes,
+      });
+
+
+      const data = await getCorrectiveActions();
+      setCorrectiveActions(data);
+
+      setEditingCorrectiveActionId(null);
+      setEditCorrectiveActionTitle("");
+      setEditCorrectiveActionDescription("");
+      setEditCorrectiveActionAssignedTo("");
+      setEditCorrectiveActionDueDate("");
+      setEditCorrectiveActionPriority("Medium");
+      setEditCorrectiveActionStatus("");
+      setEditCorrectiveActionNotes("");
+    } catch (err) {
+      setCorrectiveActionError(err.message);
+    } finally {
+      setCorrectiveActionUpdateLoading(false);
+    }
+  };
+
+
+
   const openAddDepartmentForm = () => {
     setEditingDepartment(null);
-  
+
     setDepartmentForm({
       name: "",
       description: "",
       manager: "",
       status: "Active",
     });
-  
+
     setShowDepartmentForm(true);
   };
-  
+
   const openEditDepartmentForm = (department) => {
     setEditingDepartment(department);
-  
+
     setDepartmentForm({
       name: department.name || "",
       description: department.description || "",
       manager: department.manager || "",
       status: department.status || "Active",
     });
-  
+
     setShowDepartmentForm(true);
   };
-  
+
   const handleDepartmentInputChange = (e) => {
     const { name, value } = e.target;
-  
+
     setDepartmentForm((previous) => ({
       ...previous,
       [name]: value,
@@ -828,16 +911,16 @@ const handleDeletePolicy = async (id) => {
 
   const handleDepartmentSubmit = async (e) => {
     e.preventDefault();
-  
+
     try {
       setDepartmentError("");
-  
+
       if (editingDepartment) {
         await updateDepartment(editingDepartment._id, departmentForm);
       } else {
         await createDepartment(departmentForm);
       }
-  
+
       setShowDepartmentForm(false);
       setEditingDepartment(null);
       await loadDepartments();
@@ -845,14 +928,14 @@ const handleDeletePolicy = async (id) => {
       setDepartmentError(err.message);
     }
   };
-  
+
   const handleDeleteDepartment = async (id) => {
     const confirmed = window.confirm(
       "Are you sure you want to delete this department?"
     );
-  
+
     if (!confirmed) return;
-  
+
     try {
       setDepartmentError("");
       await deleteDepartment(id);
@@ -1144,7 +1227,7 @@ useEffect(() => {
       loadDepartments();
       loadAssets();
     }
-  
+
     if (activePage === "Audit Scheduling") {
       loadDepartments();
       loadAudits();
@@ -1165,7 +1248,7 @@ useEffect(() => {
       loadAudits();
     }
   }, [activePage]);
-  
+
 
 
   useEffect(() => {
@@ -1184,9 +1267,14 @@ useEffect(() => {
       getCorrectiveActions()
         .then((data) => setCorrectiveActions(data))
         .catch((err) => setCorrectiveActionError(err.message));
-      getUsers()
-      .then((data) => setUsers(data))
-      .catch((err) => setCorrectiveActionError(err.message));
+
+      getAssignableUsers()
+        .then((data) => setUsers(data))
+        .catch((err) => setCorrectiveActionError(err.message));
+
+      getFindings()
+        .then((data) => setLiveFindings(data))
+        .catch((err) => setCorrectiveActionError(err.message));
     }
   }, [activePage]);
 
@@ -1197,7 +1285,7 @@ useEffect(() => {
         try {
           setUsersLoading(true);
           setUsersError("");
-  
+
           const data = await getUsers();
           setUsers(data);
         } catch (err) {
@@ -1206,7 +1294,7 @@ useEffect(() => {
           setUsersLoading(false);
         }
       };
-  
+
       loadUsers();
     }
   }, [activePage]);
@@ -1220,11 +1308,11 @@ useEffect(() => {
       loadAssets();
       loadAudits();
       loadEvidence();
-  
+
       getFindings()
         .then((data) => setLiveFindings(data))
         .catch((err) => setFindingError(err.message));
-  
+
       getCorrectiveActions()
         .then((data) => setCorrectiveActions(data))
         .catch((err) => setCorrectiveActionError(err.message));
@@ -1234,7 +1322,7 @@ useEffect(() => {
 
 
   const findings = liveFindings.map((finding, index) => ({
-    
+
     id: `FND-${String(index + 1).padStart(3, "0")}`,
     title: finding.title,
     department: finding.audit?.department?.name || "N/A",
@@ -1252,7 +1340,7 @@ useEffect(() => {
           <h1>Security Compliance</h1>
           <h2>Welcome Back</h2>
           <p>Sign in to access your dashboard</p>
-  
+
           <form onSubmit={handleLogin}>
             <input
               type="email"
@@ -1261,7 +1349,7 @@ useEffect(() => {
               onChange={(e) => setLoginEmail(e.target.value)}
               required
             />
-  
+
             <input
               type="password"
               placeholder="Password"
@@ -1269,9 +1357,9 @@ useEffect(() => {
               onChange={(e) => setLoginPassword(e.target.value)}
               required
             />
-  
+
             {loginError && <p className="login-error">{loginError}</p>}
-  
+
             <button type="submit" disabled={loginLoading}>
               {loginLoading ? "Signing In..." : "Sign In"}
             </button>
@@ -1281,7 +1369,7 @@ useEffect(() => {
     );
   }
 
-  
+
   const handleExportReport = () => {
     const sections = [
       ["Departments", departments],
@@ -1384,6 +1472,13 @@ useEffect(() => {
                   {item.title}
                 </p>
               );
+            }
+
+            if (
+              item.name === "Activity Log" &&
+              !["Admin", "Compliance Officer", "Auditor"].includes(user?.role)
+            ) {
+              return null;
             }
 
             const Icon = item.icon;
@@ -1504,7 +1599,7 @@ useEffect(() => {
             {error && <p style={{ color: "red" }}>{error}</p>}
 
             <div className="stats-grid">
-            
+
 
             {(user?.role === "Compliance Officer"
               ? cards.filter((card) =>
@@ -2064,7 +2159,7 @@ useEffect(() => {
 </div>
 
 </div>
-        
+
 
       ) : activePage === "Audit Scheduling" ? (
 
@@ -2074,7 +2169,7 @@ useEffect(() => {
               <h1>Audit Scheduling</h1>
               <p>Schedule, track and manage organizational audits.</p>
             </div>
-      
+
             <button className="view-all" onClick={openAddAuditForm}>
               + Schedule Audit
             </button>
@@ -2370,7 +2465,7 @@ useEffect(() => {
         </div>
     ) : activePage === "Evidence Collection" ? (
 
-      
+
 <div className="dashboard evidence-page">
   <div className="welcome-section">
     <div>
@@ -2546,10 +2641,10 @@ useEffect(() => {
   </div>
 </div>
 
-    
-    
+
+
 ) : activePage === "Audit Findings" ? (
-  <div className="dashboard findings-page"> 
+  <div className="dashboard findings-page">
     <div className="welcome-section">
   <div>
     <h1>Audit Findings</h1>
@@ -2776,7 +2871,7 @@ useEffect(() => {
     </div>
   </div>
 ) : activePage === "Departments & Assets" ? (
-  
+
 
           <div className="dashboard departments-page">
             <div className="welcome-section">
@@ -3152,13 +3247,378 @@ useEffect(() => {
   </div>
 </div>
 
+
 ) : activePage === "Corrective Actions" ? (
 
-  <div className="dashboard">
+  <div className="dashboard corrective-actions-page">
     <div className="welcome-section">
       <div>
         <h1>Corrective Actions</h1>
-        <p>Manage and track corrective actions.</p>
+        <p>Track remediation activities and monitor their progress.</p>
+      </div>
+
+      {["Admin", "Compliance Officer", "Auditor"].includes(user?.role) && (
+        <button
+          className="primary-button"
+          onClick={() => {
+            setCorrectiveActionError("");
+            setShowCorrectiveActionForm(!showCorrectiveActionForm);
+          }}
+        >
+          {showCorrectiveActionForm ? "Cancel" : "+ Add Corrective Action"}
+        </button>
+      )}
+    </div>
+
+    {correctiveActionError && (
+      <div className="error-message">{correctiveActionError}</div>
+    )}
+
+    <div className="stats-grid">
+      <div className="stat-card">
+        <div className="stat-title">Total Actions</div>
+        <div className="stat-value">{correctiveActions.length}</div>
+        <div className="stat-description">All remediation activities</div>
+      </div>
+
+      <div className="stat-card">
+        <div className="stat-title">Completed</div>
+        <div className="stat-value">
+          {correctiveActions.filter((a) => a.status === "Completed").length}
+        </div>
+        <div className="stat-description">Successfully completed</div>
+      </div>
+
+      <div className="stat-card">
+        <div className="stat-title">In Progress</div>
+        <div className="stat-value">
+          {correctiveActions.filter((a) => a.status === "In Progress").length}
+        </div>
+        <div className="stat-description">Currently being addressed</div>
+      </div>
+
+      <div className="stat-card">
+        <div className="stat-title">Overdue</div>
+        <div className="stat-value">
+          {correctiveActions.filter(
+            (a) =>
+              a.status !== "Completed" &&
+              new Date(a.dueDate) < new Date(new Date().setHours(0, 0, 0, 0))
+          ).length}
+        </div>
+        <div className="stat-description">Past their due date</div>
+      </div>
+    </div>
+
+    {showCorrectiveActionForm && (
+      <div className="panel">
+        <div className="panel-header">
+          <h2>Add Corrective Action</h2>
+        </div>
+
+        <form onSubmit={handleCorrectiveActionSubmit} className="form-grid">
+          <div className="form-group">
+            <label>Action Title</label>
+            <input
+              type="text"
+              value={actionForm.title}
+              onChange={(e) =>
+                setActionForm({ ...actionForm, title: e.target.value })
+              }
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Related Finding</label>
+            <select
+              value={actionForm.finding}
+              onChange={(e) =>
+                setActionForm({ ...actionForm, finding: e.target.value })
+              }
+              required
+            >
+              <option value="">Select a finding</option>
+              {liveFindings.map((finding) => (
+                <option key={finding._id} value={finding._id}>
+                  {String(finding.title || finding.description || "Untitled Finding")}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Assign To</label>
+            <select
+              value={actionForm.assignedTo}
+              onChange={(e) =>
+                setActionForm({ ...actionForm, assignedTo: e.target.value })
+              }
+              required
+            >
+              <option value="">Select a user</option>
+              {users.map((assignedUser) => (
+                <option key={assignedUser._id} value={assignedUser._id}>
+                  {assignedUser.name} ({assignedUser.role})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Due Date</label>
+            <input
+              type="date"
+              value={actionForm.dueDate}
+              onChange={(e) =>
+                setActionForm({ ...actionForm, dueDate: e.target.value })
+              }
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label>Priority</label>
+            <select
+              value={actionForm.priority}
+              onChange={(e) =>
+                setActionForm({ ...actionForm, priority: e.target.value })
+              }
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Status</label>
+            <select
+              value={actionForm.status}
+              onChange={(e) =>
+                setActionForm({ ...actionForm, status: e.target.value })
+              }
+            >
+              <option value="Open">Open</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Completed">Completed</option>
+              <option value="Overdue">Overdue</option>
+            </select>
+          </div>
+
+          <div className="form-group full-width">
+            <label>Description</label>
+            <textarea
+              value={actionForm.description}
+              onChange={(e) =>
+                setActionForm({ ...actionForm, description: e.target.value })
+              }
+              rows="3"
+              required
+            />
+          </div>
+
+          <div className="form-group full-width">
+            <label>Closure Notes</label>
+            <textarea
+              value={actionForm.closureNotes}
+              onChange={(e) =>
+                setActionForm({ ...actionForm, closureNotes: e.target.value })
+              }
+              rows="2"
+            />
+          </div>
+
+          <div className="form-actions full-width">
+            <button type="submit" disabled={correctiveActionLoading}>
+              {correctiveActionLoading ? "Saving..." : "Create Corrective Action"}
+            </button>
+          </div>
+        </form>
+      </div>
+    )}
+
+    <div className="panel">
+      <div className="panel-header">
+        <h2>Corrective Actions List</h2>
+        <span>{correctiveActions.length} actions</span>
+      </div>
+
+      <div className="table-wrapper">
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Related Finding</th>
+              <th>Assigned To</th>
+              <th>Due Date</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {correctiveActions.length === 0 ? (
+              <tr>
+                <td colSpan="7">No corrective actions found.</td>
+              </tr>
+            ) : (
+              correctiveActions.map((action) => (
+                <tr key={action._id}>
+                  <td>
+  {editingCorrectiveActionId === action._id ? (
+    <div className="corrective-edit-fields">
+      <input
+        type="text"
+        value={editCorrectiveActionTitle}
+        onChange={(e) => setEditCorrectiveActionTitle(e.target.value)}
+        placeholder="Action title"
+      />
+
+      <textarea
+        value={editCorrectiveActionDescription}
+        onChange={(e) => setEditCorrectiveActionDescription(e.target.value)}
+        placeholder="Action description"
+        rows="3"
+      />
+    </div>
+  ) : (
+    <>
+      <strong>{action.title}</strong>
+      <div>{action.description}</div>
+    </>
+  )}
+</td>
+                  <td>{action.finding?.title || "N/A"}</td>
+                  <td>
+  {editingCorrectiveActionId === action._id ? (
+    <select
+      value={editCorrectiveActionAssignedTo}
+      onChange={(e) => setEditCorrectiveActionAssignedTo(e.target.value)}
+    >
+      <option value="">Select User</option>
+      {users.map((user) => (
+        <option key={user._id} value={user._id}>
+          {user.name}
+        </option>
+      ))}
+    </select>
+  ) : (
+    action.assignedTo?.name || "N/A"
+  )}
+</td>
+<td>
+  {editingCorrectiveActionId === action._id ? (
+    <input
+      type="date"
+      value={editCorrectiveActionDueDate}
+      onChange={(e) => setEditCorrectiveActionDueDate(e.target.value)}
+    />
+  ) : (
+    action.dueDate
+      ? new Date(action.dueDate).toLocaleDateString()
+      : "N/A"
+  )}
+</td>
+<td>
+  {editingCorrectiveActionId === action._id ? (
+    <select
+      value={editCorrectiveActionPriority}
+      onChange={(e) => setEditCorrectiveActionPriority(e.target.value)}
+    >
+      <option value="Low">Low</option>
+      <option value="Medium">Medium</option>
+      <option value="High">High</option>
+      <option value="Critical">Critical</option>
+    </select>
+  ) : (
+    action.priority
+  )}
+</td>
+                  <td>
+  {editingCorrectiveActionId === action._id ? (
+    <div>
+      <select
+        value={editCorrectiveActionStatus}
+        onChange={(e) => setEditCorrectiveActionStatus(e.target.value)}
+      >
+        <option value="Open">Open</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Completed">Completed</option>
+        <option value="Overdue">Overdue</option>
+      </select>
+
+      <textarea
+        value={editCorrectiveActionNotes}
+        onChange={(e) => setEditCorrectiveActionNotes(e.target.value)}
+        placeholder="Enter closure notes"
+        rows="2"
+      />
+    </div>
+  ) : (
+    <span className={`status ${action.status?.toLowerCase().replace(" ", "-")}`}>
+      {action.status}
+    </span>
+  )}
+</td>
+
+
+<td>
+  {editingCorrectiveActionId === action._id ? (
+    <>
+      <button
+        type="button"
+        disabled={correctiveActionUpdateLoading}
+        onClick={() => handleCorrectiveActionUpdate(action._id)}
+      >
+        {correctiveActionUpdateLoading ? "Saving..." : "Save"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setEditingCorrectiveActionId(null);
+          setEditCorrectiveActionTitle("");
+          setEditCorrectiveActionDescription("");
+          setEditCorrectiveActionAssignedTo("");
+          setEditCorrectiveActionDueDate("");
+          setEditCorrectiveActionPriority("Medium");
+          setEditCorrectiveActionStatus("");
+          setEditCorrectiveActionNotes("");
+        }}
+      >
+        Cancel
+      </button>
+    </>
+  ) : (
+    <button
+      type="button"
+      onClick={() => {
+        setEditingCorrectiveActionId(action._id);
+        setEditCorrectiveActionTitle(action.title || "");
+        setEditCorrectiveActionDescription(action.description || "");
+        setEditCorrectiveActionAssignedTo(action.assignedTo?._id || "");
+        setEditCorrectiveActionDueDate(
+          action.dueDate
+            ? new Date(action.dueDate).toISOString().split("T")[0]
+            : ""
+        );
+        setEditCorrectiveActionPriority(action.priority || "Medium");
+        setEditCorrectiveActionStatus(action.status || "Open");
+        setEditCorrectiveActionNotes(action.closureNotes || "");
+      }}
+    >
+      Edit
+    </button>
+  )}
+</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -3166,7 +3626,7 @@ useEffect(() => {
 
 ) : activePage === "Compliance Monitoring" ? (
 
-  <div className="dashboard">
+  <div className="dashboard compliance-page">
     <div className="welcome-section">
       <div>
         <h1>Compliance Monitoring</h1>
@@ -3274,6 +3734,64 @@ useEffect(() => {
     )}
   </div>
 
+
+) : activePage === "Activity Log" ? (
+
+  <div className="dashboard">
+    <div className="welcome-section">
+      <div>
+        <h1>Activity Log</h1>
+        <p>Track user actions and changes across the compliance platform.</p>
+      </div>
+    </div>
+
+    <div className="panel" style={{ padding: "24px", marginTop: "25px" }}>
+      <div style={{ marginBottom: "20px" }}>
+        <h2>Recent Activities</h2>
+        <p>Audit trail of actions performed in the system.</p>
+      </div>
+
+      {activityLogsLoading ? (
+        <p>Loading activity logs...</p>
+      ) : activityLogsError ? (
+        <p className="error-message">{activityLogsError}</p>
+      ) : activityLogs.length === 0 ? (
+        <p>No activities have been recorded yet.</p>
+      ) : (
+        <div className="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Action</th>
+                <th>Module</th>
+                <th>Performed By</th>
+                <th>Role</th>
+                <th>Description</th>
+                <th>Date & Time</th>
+              </tr>
+            </thead>
+
+            <tbody>
+              {activityLogs.map((log) => (
+                <tr key={log._id}>
+                  <td>{log.action}</td>
+                  <td>{log.module}</td>
+                  <td>{log.user?.name || log.userName || "System"}</td>
+                  <td>{log.user?.role || log.userRole || "—"}</td>
+                  <td>{log.description}</td>
+                  <td>
+                    {log.createdAt
+                      ? new Date(log.createdAt).toLocaleString()
+                      : "—"}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  </div>
 
 ) : activePage === "Reports" ? (
 
@@ -3487,7 +4005,7 @@ useEffect(() => {
                           </button>
                         )}
                       </td>
-                      
+
                     </tr>
                   ))}
                 </tbody>
@@ -3499,7 +4017,7 @@ useEffect(() => {
   </div>
 
 ) : activePage === "Settings" ? (
-  <div className="dashboard">
+  <div className="dashboard settings-page">
     <div className="welcome-section">
       <div>
         <h1>Settings</h1>
@@ -3554,7 +4072,7 @@ useEffect(() => {
   </div>
 
 ) : activePage === "Settings" ? (
-  <div className="dashboard">
+  <div className="dashboard settings-page">
     <div className="welcome-section">
       <div>
         <h1>Settings</h1>

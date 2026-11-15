@@ -1,9 +1,18 @@
 const Audit = require("../models/Audit");
+const logActivity = require("../utils/logActivity");
 
 // Create audit
 const createAudit = async (req, res) => {
   try {
     const audit = await Audit.create(req.body);
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Created",
+      module: "Audit",
+      description: `Created audit ${audit.title}`,
+      resourceId: audit._id.toString(),
+    });
 
     res.status(201).json({
       message: "Audit scheduled successfully!",
@@ -71,6 +80,14 @@ const updateAudit = async (req, res) => {
       });
     }
 
+    await logActivity({
+      userId: req.user.id,
+      action: "Updated",
+      module: "Audit",
+      description: `Updated audit ${audit.title}`,
+      resourceId: audit._id.toString(),
+    });
+
     res.status(200).json({
       message: "Audit updated successfully!",
       audit,
@@ -93,6 +110,14 @@ const deleteAudit = async (req, res) => {
         message: "Audit not found.",
       });
     }
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Deleted",
+      module: "Audit",
+      description: `Deleted audit ${audit.title}`,
+      resourceId: audit._id.toString(),
+    });
 
     res.status(200).json({
       message: "Audit deleted successfully!",

@@ -18,6 +18,7 @@ The system provides role-based access, dashboard analytics, compliance reports, 
 - **Evidence Management:** Upload and manage audit evidence.
 - **Findings Management:** Track audit findings.
 - **Corrective Actions:** Manage actions required to resolve compliance issues.
+- **Activity Log (Audit Trail):** Record and review user actions across platform modules, including the action, module, user, role, description, and timestamp. Accessible to Admins, Compliance Officers, and Auditors.
 - **Reports & Analytics:** Generate detailed compliance reports and export them as CSV and print reports.
 
 ## Technology Stack

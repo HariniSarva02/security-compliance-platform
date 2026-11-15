@@ -1,9 +1,18 @@
 const Asset = require("../models/Asset");
+const logActivity = require("../utils/logActivity");
 
 // Create asset
 const createAsset = async (req, res) => {
   try {
     const asset = await Asset.create(req.body);
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Created",
+      module: "Asset",
+      description: `Created asset ${asset.name}`,
+      resourceId: asset._id.toString(),
+    });
 
     res.status(201).json({
       message: "Asset created successfully!",
@@ -69,6 +78,14 @@ const updateAsset = async (req, res) => {
       });
     }
 
+    await logActivity({
+      userId: req.user.id,
+      action: "Updated",
+      module: "Asset",
+      description: `Updated asset ${asset.name}`,
+      resourceId: asset._id.toString(),
+    });
+
     res.status(200).json({
       message: "Asset updated successfully!",
       asset,
@@ -91,6 +108,14 @@ const deleteAsset = async (req, res) => {
         message: "Asset not found.",
       });
     }
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Deleted",
+      module: "Asset",
+      description: `Deleted asset ${asset.name}`,
+      resourceId: asset._id.toString(),
+    });
 
     res.status(200).json({
       message: "Asset deleted successfully!",

@@ -1,9 +1,18 @@
 const Policy = require("../models/Policy");
+const logActivity = require("../utils/logActivity");
 
 // Create a new policy
 const createPolicy = async (req, res) => {
   try {
     const policy = await Policy.create(req.body);
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Created",
+      module: "Policy",
+      description: `Created policy ${policy.title}`,
+      resourceId: policy._id.toString(),
+    });
 
     res.status(201).json({
       message: "Policy created successfully!",
@@ -66,6 +75,14 @@ const updatePolicy = async (req, res) => {
       });
     }
 
+    await logActivity({
+      userId: req.user.id,
+      action: "Updated",
+      module: "Policy",
+      description: `Updated policy ${policy.title}`,
+      resourceId: policy._id.toString(),
+    });
+
     res.status(200).json({
       message: "Policy updated successfully!",
       policy,
@@ -88,6 +105,14 @@ const deletePolicy = async (req, res) => {
         message: "Policy not found.",
       });
     }
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Deleted",
+      module: "Policy",
+      description: `Deleted policy ${policy.title}`,
+      resourceId: policy._id.toString(),
+    });
 
     res.status(200).json({
       message: "Policy deleted successfully!",

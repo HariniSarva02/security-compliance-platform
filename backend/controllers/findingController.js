@@ -1,9 +1,18 @@
 
 const Finding = require("../models/Finding");
+const logActivity = require("../utils/logActivity");
 
 const createFinding = async (req, res) => {
   try {
     const finding = await Finding.create(req.body);
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Created",
+      module: "Finding",
+      description: `Created finding ${finding.title}`,
+      resourceId: finding._id.toString(),
+    });
 
     res.status(201).json({
       message: "Finding created successfully.",
@@ -40,6 +49,14 @@ const updateFinding = async (req, res) => {
       return res.status(404).json({ message: "Finding not found." });
     }
 
+    await logActivity({
+      userId: req.user.id,
+      action: "Updated",
+      module: "Finding",
+      description: `Updated finding ${finding.title}`,
+      resourceId: finding._id.toString(),
+    });
+
     res.status(200).json({
       message: "Finding updated successfully.",
       finding,
@@ -56,6 +73,14 @@ const deleteFinding = async (req, res) => {
     if (!finding) {
       return res.status(404).json({ message: "Finding not found." });
     }
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Deleted",
+      module: "Finding",
+      description: `Deleted finding ${finding.title}`,
+      resourceId: finding._id.toString(),
+    });
 
     res.status(200).json({
       message: "Finding deleted successfully.",

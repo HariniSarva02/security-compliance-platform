@@ -1,4 +1,5 @@
 const Evidence = require("../models/Evidence");
+const logActivity = require("../utils/logActivity");
 
 // Upload evidence
 const createEvidence = async (req, res) => {
@@ -21,6 +22,14 @@ const createEvidence = async (req, res) => {
       audit,
       control,
       uploadedBy: req.user.id,
+    });
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Uploaded",
+      module: "Evidence",
+      description: `Uploaded evidence ${evidence.title} (${evidence.fileName})`,
+      resourceId: evidence._id.toString(),
     });
 
     res.status(201).json({

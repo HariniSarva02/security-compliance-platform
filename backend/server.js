@@ -21,6 +21,7 @@ const evidenceRoutes = require("./routes/evidenceRoutes");
 const findingRoutes = require("./routes/findingRoutes");
 const correctiveActionRoutes = require("./routes/correctiveActionRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
+const activityLogRoutes = require("./routes/activityLogRoutes");
 
 app.use(cors());
 app.use(express.json());
@@ -44,6 +45,7 @@ app.use("/api/findings", findingRoutes);
 app.use("/api/corrective-actions", correctiveActionRoutes);
 
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/activity-logs", activityLogRoutes);
 
 
 app.get("/", (req, res) => {

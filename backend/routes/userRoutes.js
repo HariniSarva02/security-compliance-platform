@@ -3,6 +3,7 @@ const router = express.Router();
 
 const {
   getUsers,
+  getAssignableUsers,
   updateUser,
 } = require("../controllers/userController");
 
@@ -12,6 +13,7 @@ const {
 } = require("../middleware/authMiddleware");
 
 router.get("/", protect, adminOnly, getUsers);
+router.get("/assignable", protect, getAssignableUsers);
 
 router.put("/:id", protect, adminOnly, updateUser);
 

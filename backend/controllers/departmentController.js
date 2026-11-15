@@ -1,9 +1,18 @@
 const Department = require("../models/Department");
+const logActivity = require("../utils/logActivity");
 
 // Create department
 const createDepartment = async (req, res) => {
   try {
     const department = await Department.create(req.body);
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Created",
+      module: "Department",
+      description: `Created department ${department.name}`,
+      resourceId: department._id.toString(),
+    });
 
     res.status(201).json({
       message: "Department created successfully",
@@ -57,6 +66,14 @@ const updateDepartment = async (req, res) => {
       });
     }
 
+    await logActivity({
+      userId: req.user.id,
+      action: "Updated",
+      module: "Department",
+      description: `Updated department ${department.name}`,
+      resourceId: department._id.toString(),
+    });
+
     res.status(200).json({
       message: "Department updated successfully",
       department,
@@ -76,6 +93,14 @@ const deleteDepartment = async (req, res) => {
         message: "Department not found",
       });
     }
+
+    await logActivity({
+      userId: req.user.id,
+      action: "Deleted",
+      module: "Department",
+      description: `Deleted department ${department.name}`,
+      resourceId: department._id.toString(),
+    });
 
     res.status(200).json({
       message: "Department deleted successfully",
